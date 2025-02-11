@@ -39,7 +39,6 @@ void ServiceStation::run() {
     while (running) {
         Request request;
         if (queue.getRequest(stationId, fuelType, request)) {
-            // Log queue removal
             std::string timestamp = std::ctime(&request.timestamp);
             timestamp = timestamp.substr(0, timestamp.length() - 1);
             
@@ -49,11 +48,9 @@ void ServiceStation::run() {
                                   queue.getCurrentSize(),
                                   timestamp);
             
-            // Process the request
             int serviceDelay = std::max(100, static_cast<int>(service_time(gen)));
             std::this_thread::sleep_for(std::chrono::milliseconds(serviceDelay));
             
-            // Log service completion
             timestamp = std::ctime(&request.timestamp);
             timestamp = timestamp.substr(0, timestamp.length() - 1);
             
