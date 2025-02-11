@@ -1,6 +1,7 @@
 #include "queue.h"
 #include <cstring>
 #include <stdexcept>
+#include <fstream>
 
 struct QueueData {
     int size;
@@ -71,25 +72,58 @@ bool SharedQueue::addRequest(const Request& request) {
     return success;
 }
 
-bool SharedQueue::getRequest(int stationId, Request& request) {
+bool SharedQueue::getRequest(int stationId, FuelType stationFuelType, Request& request) {
     lockQueue();
     bool found = false;
     
     if (data->size > 0) {
-        request = data->requests[data->front];
+        int matchIndex = -1;
         
-        for (int i = 0; i < data->size - 1; i++) {
+        #ifdef DEBUG
+        std::ofstream debugLog("logs/debug.log", std::ios::app);
+        debugLog << "Station " << stationId << " checking queue (size=" << data->size << "):\n";
+        for (int i = 0; i < data->size; i++) {
             int idx = (data->front + i) % data->maxSize;
-            int next_idx = (data->front + i + 1) % data->maxSize;
-            data->requests[idx] = data->requests[next_idx];
+            debugLog << "  [" << i << "] Request " << data->requests[idx].id 
+                    << " (fuel: " << getFuelTypeName(data->requests[idx].fuelType) << ")\n";
+        }
+        debugLog.close();
+        #endif
+
+        // First try to find the oldest matching request
+        for (int i = 0; i < data->size; i++) {
+            int idx = (data->front + i) % data->maxSize;
+            if (data->requests[idx].fuelType == stationFuelType) {
+                matchIndex = i;
+                break;
+            }
         }
         
-        data->size--;
-        if (data->size == 0) {
-            data->front = 0;
-            data->rear = -1;
+        if (matchIndex != -1) {
+            int idx = (data->front + matchIndex) % data->maxSize;
+            request = data->requests[idx];
+            
+            // Remove the request and shift remaining ones
+            for (int i = matchIndex; i < data->size - 1; i++) {
+                int curr = (data->front + i) % data->maxSize;
+                int next = (data->front + i + 1) % data->maxSize;
+                data->requests[curr] = data->requests[next];
+            }
+            
+            data->size--;
+            if (data->size == 0) {
+                data->front = 0;
+                data->rear = -1;
+            }
+            found = true;
+
+            #ifdef DEBUG
+            std::ofstream debugLog("logs/debug.log", std::ios::app);
+            debugLog << "Station " << stationId << " removed Request " << request.id 
+                    << " (remaining size=" << data->size << ")\n";
+            debugLog.close();
+            #endif
         }
-        found = true;
     }
     
     unlockQueue();

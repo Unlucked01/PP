@@ -13,6 +13,7 @@ private:
     int stationId;
     const Config& config;
     std::string logFile;
+    FuelType fuelType;
     
     void logService(const Request& request);
 };

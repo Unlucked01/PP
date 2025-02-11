@@ -32,6 +32,16 @@ Config Config::loadConfig(const std::string& filename) {
         else if (key.find("PUMP") != std::string::npos && key.find("STD") != std::string::npos) {
             config.pumpStds.push_back(value);
         }
+        else if (key.find("PUMP") != std::string::npos && key.find("FUEL") != std::string::npos) {
+            FuelType fuelType;
+            switch (value) {
+                case 76: fuelType = FuelType::AI_76; break;
+                case 92: fuelType = FuelType::AI_92; break;
+                case 95: fuelType = FuelType::AI_95; break;
+                default: throw std::runtime_error("Invalid fuel type: " + std::to_string(value));
+            }
+            config.pumpFuelTypes.push_back(fuelType);
+        }
     }
 
     config.numPumps = config.pumpMeans.size();

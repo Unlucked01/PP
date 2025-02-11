@@ -14,6 +14,7 @@ void handleSignal(int) {
 
 ServiceStation::ServiceStation(SharedQueue& q, int id, const Config& c)
     : queue(q), stationId(id), config(c) {
+    fuelType = config.pumpFuelTypes[id - 1];
     std::ostringstream oss;
     oss << "logs/station_" << stationId << ".log";
     logFile = oss.str();
@@ -27,16 +28,17 @@ void ServiceStation::run() {
     std::random_device rd;
     std::mt19937 gen(rd());
     
-
     int pumpIndex = stationId - 1;
     std::normal_distribution<> service_time(
         config.pumpMeans[pumpIndex],
         config.pumpStds[pumpIndex]
     );
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50 * stationId));
     
     while (running) {
         Request request;
-        if (queue.getRequest(stationId, request)) {
+        if (queue.getRequest(stationId, fuelType, request)) {
             // Log queue removal
             std::string timestamp = std::ctime(&request.timestamp);
             timestamp = timestamp.substr(0, timestamp.length() - 1);
@@ -60,7 +62,7 @@ void ServiceStation::run() {
                              timestamp);
             log.close();
         } else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
         }
     }
 }

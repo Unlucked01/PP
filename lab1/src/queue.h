@@ -32,7 +32,7 @@ public:
     ~SharedQueue();
     
     bool addRequest(const Request& request);
-    bool getRequest(int stationId, Request& request);
+    bool getRequest(int stationId, FuelType stationFuelType, Request& request);
     int getCurrentSize() const;
     
 private:
