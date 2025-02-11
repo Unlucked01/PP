@@ -54,6 +54,9 @@ int main() {
         
         while (wait(nullptr) > 0);
         
+        // Clean up remaining requests
+        queue.cleanupRemainingRequests();
+        
         std::cout << "Simulation completed" << std::endl;
         
     } catch (const std::exception& e) {
