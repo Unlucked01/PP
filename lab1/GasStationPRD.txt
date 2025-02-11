@@ -1,0 +1,201 @@
+Product Requirements Document (PRD)
+
+1. Introduction
+
+This document specifies the requirements for a simulation program developed in C/C++ on UNIX/Linux. The program models the service process at a gas station featuring fuel pumps for different fuel types. The simulation uses UNIX interprocess communication methods (shared memory and semaphores) to manage a common queue of arriving vehicles and to coordinate multiple service threads.
+
+2. Purpose
+
+The purpose of this project is to simulate the operation of a gas station with:
+- Five fueling columns:
+  - Two columns for AI‑76
+  - Two columns for AI‑92
+  - One column for AI‑95
+- A centralized waiting queue implemented in shared memory, where each arriving vehicle (client) is queued with its unique sequential number and the fuel type required.
+- Multiple protocol logs:
+  - One for the queue state (all incoming requests)
+  - One for each fueling column (records of serviced requests)
+
+The simulation must process at least 150 service requests while allowing customizable parameters for interarrival and service times, as well as the maximum capacity of the waiting queue.
+
+3. Scope
+
+- Simulation of Fueling Service:
+  Model a gas station service process where vehicles arrive and are serviced by the correct fuel pump based on their fuel type.
+  
+- Concurrency and Synchronization:
+  Use fork for each station separatly (one request-generation process plus five service processes) that interact via shared memory and are synchronized using UNIX semaphores.
+
+- Customizable Parameters:
+  The following parameters must be configurable (via command-line arguments or configuration file):
+  - Mean and standard deviation for request generation time.
+  - Mean and standard deviation for service times per station id.
+  - Maximum number of requests allowed in the waiting queue.
+
+- Logging and Protocol Files:
+  Seven protocol files will be generated:
+  - One for the shared waiting queue log.
+  - Five for the individual fueling columns' service logs.
+  - One for the request rejection log.
+
+4. Definitions, Acronyms, and Abbreviations
+
+- AI‑76, AI‑92, AI‑95: Types (brands) of gasoline.
+- Shared Memory: Memory segment accessible by multiple threads/processes, used here for the common request queue.
+- Semaphore: A synchronization mechanism used to control access to shared resources.
+
+5. System Overview
+
+The simulation system consists of:
+- A request generation process:
+  Continuously generates new fueling requests (each including a unique sequential vehicle number and required fuel type) and adds them to the shared memory queue.
+
+- Five service processes:
+  Each represents one fuel pump. Two processes handle AI‑76, two handle AI‑92, and one handles AI‑95. When a pump becomes available, the corresponding process examines the queue in shared memory, selects the earliest request that matches its fuel type, removes it from the queue, processes it, and logs the service details.
+
+- Shared Memory and Semaphores:
+  The shared memory segment holds the current waiting queue while semaphores ensure safe concurrent access and manipulation.
+
+- Protocol Files:
+  Seven files will be created:
+  - Queue log: Reflects all incoming requests.
+  - Service logs: Each fueling column maintains its own log of serviced requests.
+  - Request rejection log: Records all requests that are rejected due to queue overflow.
+
+6. Functional Requirements
+
+FR1: Request Management
+- FR1.1: When a new vehicle request arrives:
+  - A record, containing a unique sequential number and the required fuel type (AI‑76, AI‑92, or AI‑95), is added to the shared memory queue.
+- FR1.2: The arrival of each request is immediately logged into the queue protocol file with full details.
+
+FR2: Service Thread Operation
+- FR2.1: Each fueling column (as a service thread) monitors the waiting queue and, when free, scans for the first request (from the head of the queue) requiring its fuel type.
+- FR2.2: When a matching request is found:
+  - It is removed from the shared memory queue.
+  - The service event is logged into the corresponding service log file.
+- FR2.3: The service operation is simulated by a delay defined by a configurable service time (using the provided mean and standard deviation).
+
+FR3: Configuration of Simulation Parameters
+- FR3.1: The following parameters must be configurable:
+  - Request Generation Time: Mean and standard deviation.
+  - Service Time per Column: Mean and standard deviation (each fuel pump may have its own configuration).
+  - Queue Capacity: Maximum number of requests in the shared memory queue.
+- FR3.2: Configuration should be possible via command-line arguments or a configuration file.
+
+FR4: Logging and Protocol File Requirements
+- FR4.1: All protocol files (queue and service logs) are plain text, human-readable, and must record:
+  - The unique vehicle/request number.
+  - The fuel type requested.
+  - Timestamps (if applicable) for both request generation and service completion.
+  - A status marker indicating whether the request is pending or serviced.
+- FR4.2: Existing log entries are retained, and new events are appended.
+
+FR5: Concurrency and Synchronization
+- FR5.1: The system must use UNIX/Linux system calls for:
+  - Shared memory: ftok, shmget, shmat, shmdt, shmctl.
+  - Semaphores: ftok, semget, semop, semctl.
+- FR5.2: Proper synchronization (using semaphores) must ensure:
+  - Safe addition, reading, and removal of records from the shared memory queue.
+  - Consistent and correct logging to the protocol files.
+
+FR6: Simulation Scale
+- FR6.1: The simulation must process at least 150 fueling requests without loss.
+- FR6.2: The queue capacity must be sufficient for the expected load based on configuration parameters.
+
+7. Non-Functional Requirements
+
+NFR1: Platform
+- The program must compile and run on UNIX/Linux.
+
+NFR2: Reliability
+- The simulation should robustly handle concurrent operations with guaranteed synchronization to prevent race conditions and deadlocks.
+
+NFR3: Performance
+- The simulation should smoothly process at least 150 requests without loss due to queue overflow.
+
+NFR4: Logging
+- Log files must be efficiently written and must not degrade simulation performance.
+
+NFR5: Maintainability
+- Code should be structured, well-documented, and modular for ease of future modifications or enhancements.
+
+NFR6: Configurability
+- Simulation parameters should be adjustable without modifying the source code.
+
+8. System Architecture
+
+Overall architecture components include:
+
+Main Process:
+- Initializes shared memory and semaphores.
+- Spawns six processes:
+  - 1 Request Generation Process: Generates and enqueues requests.
+  - 5 Service Processes: Each dedicated to a fueling column (2 for AI‑76, 2 for AI‑92, 1 for AI‑95) that handle service simulation and logging.
+- Manages cleanup and termination after the required number of requests are processed.
+
+Interprocess Communication & Synchronization:
+- Shared memory is used to store the common waiting queue.
+- Semaphores enforce mutual exclusion during shared memory access and file logging operations.
+
+Protocol Files:
+- Seven text files are maintained:
+  - One for the queue log.
+  - Five for the individual fueling column service logs.
+  - One for the request rejection log.
+
+9. Constraints
+
+- The solution must use UNIX/Linux system calls for shared memory and semaphore operations.
+- The program must be implemented in C/C++.
+- All shared memory segments and semaphores must be properly released once the simulation terminates.
+- Timing values (interarrival and service times) must be generated based on configurable statistical distributions. Negative values must be handled (e.g., via truncation or re-sampling).
+
+10. Assumptions and Dependencies
+
+Assumptions:
+- The execution environment permits the creation of shared memory segments and semaphores.
+- The simulation is the sole process controlling the shared memory queue.
+- System time is reliable for timestamp generation if used.
+
+Dependencies:
+- UNIX/Linux operating system.
+- Standard C/C++ libraries for IPC.
+- Documentation of system calls: ftok, shmget, shmat, shmdt, shmctl, semget, semop, and semctl.
+
+11. Testing and Validation
+
+Unit Testing:
+- Develop and run tests for shared memory operations, semaphore manipulation, and log file writing.
+
+Integration Testing:
+- Verify thread interactions with shared memory.
+- Ensure that each fueling column services only the requests matching its fuel type.
+- Confirm that no race conditions or deadlocks occur during execution with at least 150 requests.
+
+Stress/Load Testing:
+- Execute the simulation under various load scenarios by altering the interarrival and service time distributions.
+- Monitor performance and synchronization under high loads.
+
+12. Future Considerations
+
+- Extending the simulation to support additional fueling columns or fuel types.
+- Enhancing logging with detailed timestamps, processing durations, and integration with monitoring tools.
+- Enabling dynamic reconfiguration of simulation parameters without restarting the simulation.
+
+13. Open Questions / Clarifications Needed
+
+- Log File Format:
+  - Should timestamps or additional meta-information be included in the protocol files?
+  - Is there a preferred format (CSV, JSON, or custom text) for log records?
+  
+- Configuration Mechanism:
+  - Should configuration be handled via a dedicated file, command-line arguments, or environment variables?
+  
+- Distribution Handling:
+  - Should interarrival and service times strictly follow a normal distribution (with negative values truncated or re-sampled), or can an alternative distribution (e.g., exponential) be used?
+  
+- Concurrent Access Specifics:
+  - When multiple fueling columns for the same fuel type (e.g., the two AI‑76 columns) are available simultaneously, are there any additional rules (beyond choosing the request closest to the head of the queue) to determine service order?
+
+End of PRD. 
