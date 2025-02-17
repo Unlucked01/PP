@@ -68,19 +68,6 @@ bool SharedQueue::addRequest(const Request& request) {
         data->requests[data->rear] = request;
         data->size++;
         success = true;
-        
-        #ifdef DEBUG
-        std::ofstream debugLog("logs/debug.log", std::ios::app);
-        debugLog << "Added Request " << request.id << " to queue (size=" << data->size << ")\n";
-        debugLog << "Queue after addition:\n";
-        for (int i = 0; i < data->size; i++) {
-            int idx = (data->front + i) % data->maxSize;
-            debugLog << "  [" << i << "] Request " << data->requests[idx].id 
-                    << " (fuel: " << getFuelTypeName(data->requests[idx].fuelType) << ")\n";
-        }
-        debugLog << "-------------------\n";
-        debugLog.close();
-        #endif
     }
     
     unlockQueue();
@@ -92,21 +79,8 @@ bool SharedQueue::getRequest(int stationId, FuelType stationFuelType, Request& r
     bool found = false;
     
     if (data->size > 0) {
-        // Search for a matching fuel type request
         int matchIndex = -1;
         
-        // Debug log current queue state
-        #ifdef DEBUG
-        std::ofstream debugLog("logs/debug.log", std::ios::app);
-        debugLog << "Station " << stationId << " checking queue (size=" << data->size << "):\n";
-        for (int i = 0; i < data->size; i++) {
-            int idx = (data->front + i) % data->maxSize;
-            debugLog << "  [" << i << "] Request " << data->requests[idx].id 
-                    << " (fuel: " << getFuelTypeName(data->requests[idx].fuelType) << ")\n";
-        }
-        debugLog.close();
-        #endif
-
         for (int i = 0; i < data->size; i++) {
             int idx = (data->front + i) % data->maxSize;
             if (data->requests[idx].fuelType == stationFuelType) {
@@ -134,20 +108,6 @@ bool SharedQueue::getRequest(int stationId, FuelType stationFuelType, Request& r
             }
             
             found = true;
-
-            #ifdef DEBUG
-            std::ofstream debugLog("logs/debug.log", std::ios::app);
-            debugLog << "Station " << stationId << " removed Request " << request.id 
-                    << " (remaining size=" << data->size << ")\n";
-            debugLog << "Queue after removal:\n";
-            for (int i = 0; i < data->size; i++) {
-                int idx = (data->front + i) % data->maxSize;
-                debugLog << "  [" << i << "] Request " << data->requests[idx].id 
-                        << " (fuel: " << getFuelTypeName(data->requests[idx].fuelType) << ")\n";
-            }
-            debugLog << "-------------------\n";
-            debugLog.close();
-            #endif
         }
     }
     
@@ -161,11 +121,6 @@ void SharedQueue::cleanupRemainingRequests() {
     if (data->size > 0) {
         std::ofstream rejectedLog("logs/rejected.log", std::ios::app);
         
-        #ifdef DEBUG
-        std::ofstream debugLog("logs/debug.log", std::ios::app);
-        debugLog << "\nRemaining requests at shutdown:\n";
-        #endif
-        
         for (int i = 0; i < data->size; i++) {
             int idx = (data->front + i) % data->maxSize;
             Request& request = data->requests[idx];
@@ -175,18 +130,8 @@ void SharedQueue::cleanupRemainingRequests() {
                               data->size,
                               " (shutdown)");
             
-            #ifdef DEBUG
-            debugLog << "  [" << i << "] Request " << request.id 
-                    << " (fuel: " << getFuelTypeName(request.fuelType) 
-                    << ") moved to rejected\n";
-            #endif
         }
-        
-        #ifdef DEBUG
-        debugLog << "-------------------\n";
-        debugLog.close();
-        #endif
-        
+
         rejectedLog.close();
         
         // Clear the queue
