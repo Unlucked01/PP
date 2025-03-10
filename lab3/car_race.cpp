@@ -1,16 +1,9 @@
-#include <mpi.h>
-#include <iostream>
-#include <iomanip>
-#include <vector>
-#include <algorithm>
-#include <unistd.h>
-#include <string>
 #include "car_race.h"
-#include "generator.h"
+#include <iostream>
+#include <algorithm>
+#include <iomanip>
+#include <unistd.h>
 
-// Define points allocation
-const int CarRace::POINTS[5] = {10, 8, 6, 4, 2};
-const int TRACK_LENGTH = 40;
 
 void clearScreen() {
     std::cout << "\033[2J\033[1;1H";
@@ -20,10 +13,10 @@ void displayTrack(const std::vector<int>& positions) {
     for (int car = 1; car <= CarRace::NUM_CARS; car++) {
         std::cout << "Car " << car << " [";
         int pos = positions[car];
-        for (int i = 0; i < TRACK_LENGTH; i++) {
+        for (int i = 0; i < CarRace::TRACK_LENGTH; i++) {
             if (i == pos) {
                 std::cout << "🏎️ ";
-            } else if (i == TRACK_LENGTH - 1) {
+            } else if (i == CarRace::TRACK_LENGTH - 1) {
                 std::cout << "🏁";
             } else {
                 std::cout << "-";
@@ -35,7 +28,6 @@ void displayTrack(const std::vector<int>& positions) {
 }
 
 void runCarProcess(int rank) {
-    Generator gen;
     RaceResult result;
     result.carId = rank;
 
@@ -43,21 +35,22 @@ void runCarProcess(int rank) {
         MPI_Barrier(MPI_COMM_WORLD);
         
         double startTime = MPI_Wtime();
-        int raceDelay = gen.generateRaceDelay(1000, 5000);
+        int raceDelay = CarRace::generateRaceDelay(1000, 5000);
         
-        int stepDelay = raceDelay / TRACK_LENGTH;
+        int stepDelay = raceDelay / CarRace::TRACK_LENGTH;
         
-        for (int progress = 0; progress <= TRACK_LENGTH; progress++) {
+        for (int progress = 0; progress <= CarRace::TRACK_LENGTH; progress++) {
             MPI_Send(&progress, 1, MPI_INT, CarRace::REFEREE_RANK, 
                     CarRace::PROGRESS_TAG, MPI_COMM_WORLD);
             
-            usleep(stepDelay * 1000); // Convert ms to microseconds
+            usleep(stepDelay * 1000);
         }
         
         double endTime = MPI_Wtime();
+        result.stageTime = endTime - startTime;
+        
         MPI_Barrier(MPI_COMM_WORLD);
         
-        result.stageTime = endTime - startTime;
         MPI_Send(&result, sizeof(RaceResult), MPI_BYTE, 
                  CarRace::REFEREE_RANK, CarRace::RESULT_TAG, MPI_COMM_WORLD);
     }
@@ -71,8 +64,10 @@ void runRefereeProcess() {
     for (int stage = 0; stage < CarRace::NUM_STAGES; stage++) {
         clearScreen();
         std::cout << "\n=== Stage " << stage + 1 << " ===\n\n";
+        
+        std::fill(positions.begin(), positions.end(), 0);
         MPI_Barrier(MPI_COMM_WORLD);
-
+        
         bool raceComplete = false;
         while (!raceComplete) {
             raceComplete = true;
@@ -89,7 +84,7 @@ void runRefereeProcess() {
                     positions[car] = progress;
                 }
                 
-                if (positions[car] < TRACK_LENGTH) {
+                if (positions[car] < CarRace::TRACK_LENGTH) {
                     raceComplete = false;
                 }
             }
@@ -97,9 +92,9 @@ void runRefereeProcess() {
             clearScreen();
             std::cout << "\n=== Stage " << stage + 1 << " ===\n\n";
             displayTrack(positions);
-            usleep(50000);
+            usleep(50000); // 50ms delay for visualization
         }
-
+        
         MPI_Barrier(MPI_COMM_WORLD);
 
         for (int i = 1; i <= CarRace::NUM_CARS; i++) {
@@ -151,4 +146,4 @@ void runRefereeProcess() {
         std::cout << std::setw(8) << carId << "|"
                  << std::setw(13) << points << "\n";
     }
-} 
+}

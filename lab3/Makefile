@@ -1,47 +1,37 @@
-# Try to detect MPI compiler wrapper
-ifneq ($(shell which mpicxx 2>/dev/null),)
-    CXX = mpicxx
-else ifneq ($(shell which mpic++ 2>/dev/null),)
-    CXX = mpic++
-else
-    $(error MPI C++ compiler wrapper not found. Please install OpenMPI or MPICH)
-endif
+CXX = mpic++
+CXXFLAGS = -Wall -std=c++17
+OBJECTS = matrix_mult.o car_race.o main.o
 
-CXXFLAGS = -Wall -std=c++17 -O2
+all: matrix_mult 1
 
-SRCS = main.cpp car_race.cpp matrix_mult.cpp
-OBJS = $(SRCS:.cpp=.o)
-DEPS = generator.h matrix.h car_race.h matrix_mult.h
-TARGET = mpi_lab3
+matrix_mult: $(OBJECTS)
+	$(CXX) $(OBJECTS) -o matrix_mult
 
-.PHONY: all clean run_car_race run_matrix run_matrix_v2 help
+1: 1.cpp
+	$(CXX) $(CXXFLAGS) 1.cpp -o 1
 
-all: $(TARGET)
+matrix_mult.o: matrix_mult.cpp matrix_mult.h
+	$(CXX) $(CXXFLAGS) -c matrix_mult.cpp
 
-$(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJS)
+car_race.o: car_race.cpp car_race.h
+	$(CXX) $(CXXFLAGS) -c car_race.cpp
 
-%.o: %.cpp $(DEPS)
-	$(CXX) $(CXXFLAGS) -c $<
+main.o: main.cpp matrix_mult.h car_race.h
+	$(CXX) $(CXXFLAGS) -c main.cpp
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f *.o matrix_mult 1
 
-run_car_race: $(TARGET)
-	mpirun --host localhost --oversubscribe -np 6 ./$(TARGET) car_race
+run4: matrix_mult
+	mpirun -np 4 --oversubscribe ./matrix_mult matrix4
 
-run_matrix: $(TARGET)
-	mpirun -np 4 ./$(TARGET) matrix
+run20: matrix_mult
+	mpirun -np 20 --oversubscribe ./matrix_mult matrix20
 
-run_matrix_v2: $(TARGET)
-	mpirun --host localhost --oversubscribe -np 20 ./$(TARGET) matrix_v2
+run_race: matrix_mult
+	mpirun -np 6 --oversubscribe ./matrix_mult car_race
 
-# Print help information
-help:
-	@echo "Available targets:"
-	@echo "  all         - Build the program (default)"
-	@echo "  clean       - Remove built files"
-	@echo "  run_car_race - Run car race simulation (requires 6 processes)"
-	@echo "  run_matrix  - Run matrix multiplication (requires 4 processes)"
-	@echo "  run_matrix_v2 - Run matrix multiplication variant 2 (requires 20 processes)"
-	@echo "  help        - Show this help message" 
+run1: 1
+	mpirun -np 2 --oversubscribe ./1
+
+.PHONY: all clean run4 run20 run_race run1
