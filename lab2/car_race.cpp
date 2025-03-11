@@ -7,7 +7,6 @@
 #include <sys/wait.h>
 #include <errno.h>
 
-// Global IPC identifiers
 int semid = -1;
 int progressQueueId = -1;
 int resultQueueId = -1;

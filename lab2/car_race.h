@@ -38,28 +38,12 @@ public:
     
     static constexpr int POINTS[5] = {10, 8, 6, 4, 2};
 
-    // IPC keys
     static const key_t SEM_KEY = 0x1234;
     static const key_t PROGRESS_QUEUE_KEY = 0x2345;
     static const key_t RESULT_QUEUE_KEY = 0x3456;
     
-    // Semaphore indices
     static const int SEM_START = 0;  // Used to signal race start
     static const int SEM_FINISH = 1; // Used to count finished cars
-    static const int SEM_MUTEX = 2;     // Used for mutual exclusion
-    static const int SEM_CARS_START = 3; // Base index for car-specific semaphores
-
-    static bool isReferee(int id) {
-        return id == REFEREE_ID;
-    }
-
-    static bool isCarProcess(int id) {
-        return id > REFEREE_ID && id <= NUM_CARS;
-    }
-
-    static int getCarId(int id) {
-        return id;
-    }
 
     static int generateRaceDelay(int minMs, int maxMs) {
         static std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
