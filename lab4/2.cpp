@@ -87,7 +87,9 @@ void ring_multiplication(int* local_matrix, int* local_vector, int* result, int 
     int source, dest;
     int vector_elem = local_vector[0];
     int local_result = 0;
+    int size;
     
+    MPI_Comm_size(comm, &size);
     MPI_Cart_shift(comm, 0, 1, &source, &dest);
     
     for (int i = 0; i < MATRIX_SIZE; i++) {
@@ -101,7 +103,19 @@ void ring_multiplication(int* local_matrix, int* local_vector, int* result, int 
         vector_elem = next_vector_elem;
     }
 
-    MPI_Gather(&local_result, 1, MPI_INT, result, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (rank == 0) {
+        result[0] = local_result;
+        for (int i = 1; i < size; i++) {
+            MPI_Recv(&result[i], 1, MPI_INT, source, 1, comm, MPI_STATUS_IGNORE);
+        }
+    } else {
+        int forwarded_result;
+        for (int i = 0; i < rank - 1; i++) {
+            MPI_Recv(&forwarded_result, 1, MPI_INT, source, 1, comm, MPI_STATUS_IGNORE);
+            MPI_Send(&forwarded_result, 1, MPI_INT, dest, 1, comm);
+        }
+        MPI_Send(&local_result, 1, MPI_INT, dest, 1, comm);
+    }
 }
 
 void pipeline_multiplication(int* local_matrix, int* local_vector, int* vector, int* result, int rank, MPI_Comm comm) {
@@ -119,9 +133,8 @@ void pipeline_multiplication(int* local_matrix, int* local_vector, int* vector, 
             MPI_Status status;
             MPI_Recv(&vector_elem, 1, MPI_INT, source, MPI_ANY_TAG, comm, &status);
         }
-        if (dest >= 0) {
-            MPI_Send(&vector_elem, 1, MPI_INT, dest, 0, comm);
-        }
+        MPI_Send(&vector_elem, 1, MPI_INT, dest, 0, comm);
+        
         local_result += local_matrix[i] * vector_elem;
     }
     MPI_Gather(&local_result, 1, MPI_INT, result, 1, MPI_INT, 0, MPI_COMM_WORLD);
